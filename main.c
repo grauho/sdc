@@ -5,7 +5,7 @@
 #include "fileLoading.h"
 #include "portopt.h"
 
-extern STL_BOOL verbose_output;
+extern SDC_BOOL verbose_output;
 
 void printHelp(void);
 
@@ -37,11 +37,11 @@ int main(int argc, char **argv)
 				break;
 			case 'v':
 				fputs("Enabling verbose output\n", stdout);
-				verbose_output = STL_TRUE;
+				verbose_output = SDC_TRUE;
 				break;
 			case 'h':
 				printHelp();
-				return STL_SUCCESS;
+				return SDC_SUCCESS;
 			case '?':
 			default: /* fallthrough */
 				fputs("Unknown switch\n", stderr);
@@ -55,7 +55,7 @@ int main(int argc, char **argv)
 			"to act upon with -i or --input. Pass in -h or "
 			"--help for additional information\n", stderr);
 
-		return STL_FAILURE;
+		return SDC_FAILURE;
 	}
 
 	if (strcmp(file_path, out_path) == 0)
@@ -64,7 +64,7 @@ int main(int argc, char **argv)
 			"--input and --output arguments must be different\n",
 			stderr);
 
-		return STL_FAILURE;
+		return SDC_FAILURE;
 	}
 
 	if (porteggIsLittle() == PORTEGG_FALSE)

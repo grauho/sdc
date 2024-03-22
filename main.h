@@ -7,12 +7,12 @@
 #include "cJSON.h"
 #include "portegg.h"
 
-#define STL_BOOL    char
-#define STL_STAT    char
-#define STL_TRUE    1
-#define STL_FALSE   0
-#define STL_SUCCESS 0
-#define STL_FAILURE 1
+#define SDC_BOOL    char
+#define SDC_STAT    char
+#define SDC_TRUE    1
+#define SDC_FALSE   0
+#define SDC_SUCCESS 0
+#define SDC_FAILURE 1
 
 /* Structure of a .safetensor file */
 /*

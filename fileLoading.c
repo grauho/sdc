@@ -13,11 +13,11 @@
  * 	- Better float bounds checking 
  */
 
-STL_BOOL verbose_output = STL_FALSE;
+SDC_BOOL verbose_output = SDC_FALSE;
 
 static void verbosePrintf(const char *fmt, ...)
 {
-	if (verbose_output == STL_TRUE)
+	if (verbose_output == SDC_TRUE)
 	{
 		va_list args;
 		va_start(args, fmt);
@@ -96,7 +96,7 @@ static enum dataType extractDataType(const struct cJSON *target)
 static char* extractRawData(FILE *fhandle, const struct cJSON *src,
 	const size_t binary_start, size_t *data_range)
 {
-	static STL_BOOL large_seek_warned = STL_FALSE;
+	static SDC_BOOL large_seek_warned = SDC_FALSE;
 	struct cJSON *start_cur = NULL;
 	struct cJSON *end_cur   = NULL;
 	char *arr               = NULL;
@@ -139,13 +139,13 @@ static char* extractRawData(FILE *fhandle, const struct cJSON *src,
 	}
 
 	if ((binary_start + data_range[0] > LONG_MAX)
-	&& (large_seek_warned == STL_FALSE))
+	&& (large_seek_warned == SDC_FALSE))
 	{
 		fprintf(stderr, "Attempting to seek to a range outside of the "
 			"historical capacity of fseek, if output doesn't work "
 			"this is the place to check first\n");
 
-		large_seek_warned = STL_TRUE;
+		large_seek_warned = SDC_TRUE;
 	}
 
 	if (fseek(fhandle, binary_start + data_range[0], SEEK_SET) != 0)
@@ -250,7 +250,7 @@ static char* convertI64toF32(char *data, const size_t len)
 	return (char *) ret;
 }
 
-static STL_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file, 
+static SDC_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file, 
 	const size_t binary_start, size_t *write_cursor, 
 	const struct cJSON *json_cursor)
 {
@@ -267,7 +267,7 @@ static STL_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 	{
 		fprintf(stderr, "Failure to extract raw tensor data\n");
 
-		return STL_FAILURE;
+		return SDC_FAILURE;
 	}
 
 	if (((dtype_obj = cJSON_GetObjectItemCaseSensitive(
@@ -277,7 +277,7 @@ static STL_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 	{
 		fprintf(stderr, "Failure to access tensor object members\n");
 
-		return STL_FAILURE;
+		return SDC_FAILURE;
 	}
 
 	dtype = extractDataType(dtype_obj);
@@ -287,7 +287,7 @@ static STL_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 	{
 		fprintf(stderr, "Failure to extract raw tensor data\n");
 
-		return STL_FAILURE;
+		return SDC_FAILURE;
 	}
 
 	data_len = data_range[1] - data_range[0];
@@ -304,7 +304,7 @@ static STL_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 			fprintf(stderr, "Bad F64 -> F32 Conversion\n");
 			free(data);
 
-			return STL_FAILURE;
+			return SDC_FAILURE;
 		}
 
 		data_len = num_items * sizeof(float);
@@ -321,7 +321,7 @@ static STL_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 			fprintf(stderr, "Bad I64 -> F32 Conversion\n");
 			free(data);
 
-			return STL_FAILURE;
+			return SDC_FAILURE;
 		}
 
 		data_len = num_items * sizeof(float);
@@ -342,7 +342,7 @@ static STL_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 		fprintf(stderr, "Cannot access tensor data_range array\n");
 		free(data);
 
-		return  STL_FAILURE;
+		return  SDC_FAILURE;
 	}
 
 	porteggSysToLeCopy(size_t, *write_cursor, write_tmp);
@@ -353,7 +353,7 @@ static STL_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 		fprintf(stderr, "Cannot access tensor data_range array\n");
 		free(data);
 
-		return  STL_FAILURE;
+		return  SDC_FAILURE;
 	}
 
 	porteggSysToLeCopy(size_t, *write_cursor + data_len, write_tmp);
@@ -366,17 +366,17 @@ static STL_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 		fprintf(stderr, "Bad write to file\n");
 		free(data);
 
-		return STL_FAILURE;
+		return SDC_FAILURE;
 	}
 
 	*write_cursor += data_len;
 	free(data);
 
-	return STL_SUCCESS;
+	return SDC_SUCCESS;
 }
 
 
-STL_STAT convertSafetensorFile(const char *filepath, const char *outpath)
+SDC_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 {
 	FILE *fhandle             = NULL;
 	FILE *out_file		  = NULL;
@@ -388,14 +388,14 @@ STL_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 	size_t tensors_loaded     = 0;
 	size_t tensors_total      = 0;
 	size_t write_cursor       = 0;
-	STL_STAT ret_code = STL_SUCCESS;
+	SDC_STAT ret_code = SDC_SUCCESS;
 
 	if (((fhandle  = fopen(filepath, "rb")) == NULL)
 	|| ((out_file  = fopen(outpath,  "w"))  == NULL)
 	|| ((data_file = tmpfile()) == NULL))
 	{
 		fprintf(stderr, "Failure to open file %s\n", filepath);
-		ret_code = STL_FAILURE;
+		ret_code = SDC_FAILURE;
 
 		goto CLEANUP;
 	}
@@ -403,7 +403,7 @@ STL_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 	if (fread(&header_len, sizeof(uint64_t), 1, fhandle) != 1)
 	{
 		fprintf(stderr, "Failure to read from file\n");
-		ret_code = STL_FAILURE;
+		ret_code = SDC_FAILURE;
 
 		goto CLEANUP;
 	}
@@ -414,7 +414,7 @@ STL_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 	if ((header = slurpHeader(fhandle, header_len)) == NULL)
 	{
 		fprintf(stderr, "Failure to slurp header\n");
-		ret_code = STL_FAILURE;
+		ret_code = SDC_FAILURE;
 
 		goto CLEANUP;
 	}
@@ -422,7 +422,7 @@ STL_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 	if ((json_tree = cJSON_ParseWithLength(header, header_len)) == NULL)
 	{
 		fprintf(stderr, "Failure to initialize JSON tree\n");
-		ret_code = STL_FAILURE;
+		ret_code = SDC_FAILURE;
 
 		goto CLEANUP;
 	}
@@ -438,7 +438,7 @@ STL_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 
 		if (loadTensorFromToken(fhandle, data_file, 
 			header_len + sizeof(uint64_t), &write_cursor, 
-			cursor) == STL_FAILURE)
+			cursor) == SDC_FAILURE)
 		{
 			fprintf(stderr, "Failure to load %s into tensor\n",
 				cursor->string);
@@ -453,7 +453,7 @@ STL_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 	{
 		fprintf(stderr, "Bad load, only %lu of %lu tensors loaded\n", 
 			tensors_loaded, tensors_total);
-		ret_code = STL_FAILURE;
+		ret_code = SDC_FAILURE;
 	}
 	else
 	{
@@ -474,14 +474,14 @@ STL_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 		{
 			fprintf(stderr, 
 				"Failure to write out header length\n");
-			ret_code = STL_FAILURE;
+			ret_code = SDC_FAILURE;
 		}
 
 		if (fwrite(tmp, sizeof(char), tmp_len, out_file) != tmp_len)
 		{
 			fprintf(stderr, 
 				"Failure to write out entire header\n");
-			ret_code = STL_FAILURE;
+			ret_code = SDC_FAILURE;
 		}
 
 		rewind(data_file);
