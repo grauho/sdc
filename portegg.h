@@ -80,32 +80,32 @@ static char* porteggReverseBytes(const size_t len, char *bytes)
 
 /* These create a local copy that will then be copied to out, it will not 
  * modify "in" in-place and in may be an r-value */
-#define porteggLeToSysCopy(type, in, out)           \
-do                                                  \
-{                                                   \
-	type portegg_tmp = in;                      \
-	out = PORTEGG_LE_TO_SYS(type, portegg_tmp); \
+#define porteggLeToSysCopy(type, in, out)             \
+do                                                    \
+{                                                     \
+	type portegg_tmp = (in);                      \
+	(out) = PORTEGG_LE_TO_SYS(type, portegg_tmp); \
 } while (0)
 
-#define porteggBeToSysCopy(type, in, out)           \
-do                                                  \
-{                                                   \
-	type portegg_tmp = in;                      \
-	out = PORTEGG_BE_TO_SYS(type, portegg_tmp); \
+#define porteggBeToSysCopy(type, in, out)             \
+do                                                    \
+{                                                     \
+	type portegg_tmp = (in);                      \
+	(out) = PORTEGG_BE_TO_SYS(type, portegg_tmp); \
 } while (0)
 
-#define porteggSysToLeCopy(type, in, out)           \
-do                                                  \
-{                                                   \
-	type portegg_tmp = in;                      \
-	out = PORTEGG_SYS_TO_LE(type, portegg_tmp); \
+#define porteggSysToLeCopy(type, in, out)             \
+do                                                    \
+{                                                     \
+	type portegg_tmp = (in);                      \
+	(out) = PORTEGG_SYS_TO_LE(type, portegg_tmp); \
 } while (0)
 
-#define porteggSysToBeCopy(type, in, out)           \
-do                                                  \
-{                                                   \
-	type portegg_tmp = in;                      \
-	out = PORTEGG_SYS_TO_BE(type, portegg_tmp); \
+#define porteggSysToBeCopy(type, in, out)             \
+do                                                    \
+{                                                     \
+	type portegg_tmp = (in);                      \
+	(out) = PORTEGG_SYS_TO_BE(type, portegg_tmp); \
 } while (0)
 
 #endif /* PORTEGG_H */
