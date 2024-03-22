@@ -58,7 +58,9 @@ given name already exist.
 
 ## Example Invocation
 
+``` shell
 ./sdc -i ../../foo.safetensors -o bar.safetensors --verbose
+```
 
 ## Bugs
 
