@@ -296,10 +296,11 @@ static SDC_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 	if (dtype == FLOAT_64)
 	{
 		const size_t num_items = data_len / sizeof(double);
+		char *tmp = NULL;
 
 		assert(data_len % sizeof(double) == 0);
 
-		if ((data = convertF64toF32(data, num_items)) == NULL)
+		if ((tmp = convertF64toF32(data, num_items)) == NULL)
 		{
 			fprintf(stderr, "Bad F64 -> F32 Conversion\n");
 			free(data);
@@ -307,16 +308,18 @@ static SDC_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 			return SDC_FAILURE;
 		}
 
+		data = tmp;
 		data_len = num_items * sizeof(float);
 		cJSON_SetValuestring(dtype_obj, "F32");
 	}
 	else if (dtype == SIGNED_64)
 	{
 		const size_t num_items = data_len / sizeof(uint64_t);
+		char *tmp = NULL;
 
 		assert(data_len % sizeof(uint64_t) == 0);
 
-		if ((data = convertI64toF32(data, num_items)) == NULL)
+		if ((tmp = convertI64toF32(data, num_items)) == NULL)
 		{
 			fprintf(stderr, "Bad I64 -> F32 Conversion\n");
 			free(data);
@@ -324,6 +327,7 @@ static SDC_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 			return SDC_FAILURE;
 		}
 
+		data = tmp;
 		data_len = num_items * sizeof(float);
 		cJSON_SetValuestring(dtype_obj, "F32");
 	}
