@@ -33,14 +33,15 @@ static char* slurpHeader(FILE *fhandle, const size_t header_len)
 
 	if (fhandle == NULL)
 	{
-		fprintf(stderr, "Bad file handle for slurping\n");
+		fprintf(stderr, "%s: Bad file handle argument\n", __func__);
 
 		return NULL;
 	}
 
 	if ((slurp = malloc(sizeof(char) * header_len)) == NULL)
 	{
-		fprintf(stderr, "Failure to allocated header buffer\n");
+		fprintf(stderr, "%s: Failure to allocated header buffer\n",
+			__func__);
 
 		return NULL;
 	}
@@ -48,8 +49,8 @@ static char* slurpHeader(FILE *fhandle, const size_t header_len)
 	if ((bytes_read = fread(slurp, sizeof(char), header_len, fhandle))
 		!= header_len)
 	{
-		fprintf(stderr, "Incomplete read, %lu / %lu\n",
-			bytes_read, header_len);
+		fprintf(stderr, "%s: Incomplete read, %lu / %lu\n",
+			__func__, bytes_read, header_len);
 		free(slurp);
 
 		return NULL;
@@ -114,7 +115,8 @@ static char* extractRawData(FILE *fhandle, const struct cJSON *src,
 
 	if ((start_cur == NULL) || (end_cur == NULL))
 	{
-		fprintf(stderr, "Failure determining tensor data range\n");
+		fprintf(stderr, "%s: Failure determining tensor data range\n",
+			__func__);
 
 		return NULL;
 	}
@@ -133,7 +135,7 @@ static char* extractRawData(FILE *fhandle, const struct cJSON *src,
 
 	if ((arr = malloc(sizeof(char) * (data_len))) == NULL)
 	{
-		fprintf(stderr, "Malloc failure in RawData\n");
+		fprintf(stderr, "%s: Malloc failure for data\n", __func__);
 
 		return NULL;
 	}
@@ -141,16 +143,16 @@ static char* extractRawData(FILE *fhandle, const struct cJSON *src,
 	if ((binary_start + data_range[0] > LONG_MAX)
 	&& (large_seek_warned == SDC_FALSE))
 	{
-		fprintf(stderr, "Attempting to seek to a range outside of the "
-			"historical capacity of fseek, if output doesn't work "
-			"this is the place to check first\n");
+		fprintf(stderr, "%s: Attempting to seek to a range outside of "
+			"the historical capacity of fseek, if output doesn't "
+			"work this is the place to check first\n", __func__);
 
 		large_seek_warned = SDC_TRUE;
 	}
 
 	if (fseek(fhandle, binary_start + data_range[0], SEEK_SET) != 0)
 	{
-		fprintf(stderr, "Bad file seek\n");
+		fprintf(stderr, "%s: Bad file seek\n", __func__);
 		free(arr);
 
 		return NULL;
@@ -158,7 +160,7 @@ static char* extractRawData(FILE *fhandle, const struct cJSON *src,
 
 	if (fread(arr, sizeof(char), data_len, fhandle) != data_len)
 	{
-		fprintf(stderr, "Bad read from file\n");
+		fprintf(stderr, "%s: Bad read from file\n", __func__);
 		free(arr);
 
 		return NULL;
@@ -261,11 +263,11 @@ static SDC_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 	char *data              = NULL;
 	size_t data_range[2]    = {0};
 	size_t data_len         = 0;
-	size_t write_tmp;
+	size_t bytes_out, write_tmp;
 
 	if ((fhandle == NULL) || (data_file == NULL) || (json_cursor == NULL))
 	{
-		fprintf(stderr, "Failure to extract raw tensor data\n");
+		fprintf(stderr, "%s: Invalid Arguments\n", __func__);
 
 		return SDC_FAILURE;
 	}
@@ -275,7 +277,8 @@ static SDC_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 	|| ((data_obj = cJSON_GetObjectItemCaseSensitive(
 		json_cursor, "data_offsets")) == NULL))
 	{
-		fprintf(stderr, "Failure to access tensor object members\n");
+		fprintf(stderr, "%s: Cannot access tensor object members\n",
+			__func__);
 
 		return SDC_FAILURE;
 	}
@@ -285,7 +288,8 @@ static SDC_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 
 	if (data == NULL)
 	{
-		fprintf(stderr, "Failure to extract raw tensor data\n");
+		fprintf(stderr, "%s: Failure to extract raw tensor data\n",
+			__func__);
 
 		return SDC_FAILURE;
 	}
@@ -302,7 +306,8 @@ static SDC_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 
 		if ((tmp = convertF64toF32(data, num_items)) == NULL)
 		{
-			fprintf(stderr, "Bad F64 -> F32 Conversion\n");
+			fprintf(stderr, "%s: Bad F64 -> F32 Conversion\n", 
+				__func__);
 			free(data);
 
 			return SDC_FAILURE;
@@ -321,7 +326,8 @@ static SDC_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 
 		if ((tmp = convertI64toF32(data, num_items)) == NULL)
 		{
-			fprintf(stderr, "Bad I64 -> F32 Conversion\n");
+			fprintf(stderr, "%s: Bad I64 -> F32 Conversion\n",
+				__func__);
 			free(data);
 
 			return SDC_FAILURE;
@@ -343,7 +349,8 @@ static SDC_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 
 	if ((arr_obj = cJSON_GetArrayItem(data_obj, 0)) == NULL)
 	{
-		fprintf(stderr, "Cannot access tensor data_range array\n");
+		fprintf(stderr, "%s: Cannot access tensor data_range array\n",
+			__func__);
 		free(data);
 
 		return  SDC_FAILURE;
@@ -354,7 +361,8 @@ static SDC_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 
 	if ((arr_obj = cJSON_GetArrayItem(data_obj, 1)) == NULL)
 	{
-		fprintf(stderr, "Cannot access tensor data_range array\n");
+		fprintf(stderr, "%s: Cannot access tensor data_range array\n",
+			__func__);
 		free(data);
 
 		return  SDC_FAILURE;
@@ -365,9 +373,11 @@ static SDC_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 	
 	data = PORTEGG_SYS_TO_LE_RAW(data_len, data);
 
-	if (fwrite(data, sizeof(char), data_len, data_file) != data_len)
+	if ((bytes_out = fwrite(data, sizeof(char), data_len, data_file)) 
+		!= data_len)
 	{
-		fprintf(stderr, "Bad write to file\n");
+		fprintf(stderr, "%s: Incomplete write to file (%lu / %lu)\n", 
+			__func__, bytes_out, data_len);
 		free(data);
 
 		return SDC_FAILURE;
@@ -398,7 +408,8 @@ SDC_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 	|| ((out_file  = fopen(outpath,  "w"))  == NULL)
 	|| ((data_file = tmpfile()) == NULL))
 	{
-		fprintf(stderr, "Failure to open file %s\n", filepath);
+		fprintf(stderr, "%s: Failure to open file '%s'\n", 
+			__func__, filepath);
 		ret_code = SDC_FAILURE;
 
 		goto CLEANUP;
@@ -406,7 +417,8 @@ SDC_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 
 	if (fread(&header_len, sizeof(uint64_t), 1, fhandle) != 1)
 	{
-		fprintf(stderr, "Failure to read from file\n");
+		fprintf(stderr, "%s: Failure to read from file '%s'\n", 
+			__func__, filepath);
 		ret_code = SDC_FAILURE;
 
 		goto CLEANUP;
@@ -417,7 +429,7 @@ SDC_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 
 	if ((header = slurpHeader(fhandle, header_len)) == NULL)
 	{
-		fprintf(stderr, "Failure to slurp header\n");
+		fprintf(stderr, "%s: Failure to slurp header\n", __func__);
 		ret_code = SDC_FAILURE;
 
 		goto CLEANUP;
@@ -425,7 +437,8 @@ SDC_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 
 	if ((json_tree = cJSON_ParseWithLength(header, header_len)) == NULL)
 	{
-		fprintf(stderr, "Failure to initialize JSON tree\n");
+		fprintf(stderr, "%s: Failure to initialize JSON tree\n",
+			__func__);
 		ret_code = SDC_FAILURE;
 
 		goto CLEANUP;
@@ -444,8 +457,8 @@ SDC_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 			header_len + sizeof(uint64_t), &write_cursor, 
 			cursor) == SDC_FAILURE)
 		{
-			fprintf(stderr, "Failure to load %s into tensor\n",
-				cursor->string);
+			fprintf(stderr, "%s: Failure to load %s into tensor\n",
+				__func__, cursor->string);
 
 			continue;
 		}
@@ -455,8 +468,9 @@ SDC_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 
 	if (tensors_loaded != tensors_total)
 	{
-		fprintf(stderr, "Bad load, only %lu of %lu tensors loaded\n", 
-			tensors_loaded, tensors_total);
+		fprintf(stderr, 
+			"%s: Incomplete load, (%lu / %lu) tensors loaded\n", 
+			__func__, tensors_loaded, tensors_total);
 		ret_code = SDC_FAILURE;
 	}
 	else
@@ -477,14 +491,16 @@ SDC_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 		if (fwrite(&write_len, sizeof(uint64_t), 1, out_file) != 1)
 		{
 			fprintf(stderr, 
-				"Failure to write out header length\n");
+				"%s: Failure to write out header length\n",
+				__func__);
 			ret_code = SDC_FAILURE;
 		}
 
 		if (fwrite(tmp, sizeof(char), tmp_len, out_file) != tmp_len)
 		{
 			fprintf(stderr, 
-				"Failure to write out entire header\n");
+				"%s: Failure to write out entire header\n",
+				__func__);
 			ret_code = SDC_FAILURE;
 		}
 

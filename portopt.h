@@ -10,6 +10,10 @@
 #define PORTOPT_TRUE  1
 #define PORTOPT_FALSE 0
 
+/* Checks if a given ASCII encoded character is a number */
+#define PORTOPT_IS_NUM(x) \
+	((((x) >= '0') && ((x) <= '9')) ? PORTOPT_TRUE : PORTOPT_FALSE)
+
 #ifndef PORTOPT_DISABLE_LOGGING
 /* Not freestanding C90 compatable, but disablable */
 #include <stdio.h>
@@ -42,6 +46,20 @@ static int portoptCmp(const char *left, const char *right)
 	return (* (unsigned char *)left) - (* (unsigned char *)right);
 }
 
+static PORTOPT_BOOL portoptValidateNumber(char *str)
+{
+	do
+	{
+		/* don't worry, this will fail immediately for '\0' */
+		if (PORTOPT_IS_NUM(*str) == PORTOPT_FALSE)
+		{
+			return PORTOPT_FALSE;
+		}
+	} while (*(++str) != '\0');
+
+	return PORTOPT_TRUE;
+}
+
 /* Returns NULL so should the user want to crash on a particular switch not
  * getting that arg that they expect they can */
 static char* portoptGetArg(const size_t argc, char **argv, size_t *ind)
@@ -53,7 +71,9 @@ static char* portoptGetArg(const size_t argc, char **argv, size_t *ind)
 		return NULL;
 	}
 
-	return (argv[*ind][0] == '-') ? NULL : argv[(*ind)++];
+	return ((argv[*ind][0] == '-') 
+	&& (portoptValidateNumber(&(argv[*ind][1])) == PORTOPT_FALSE))
+		? NULL : argv[(*ind)++];
 }
 
 static PORTOPT_BOOL portoptCmpVerbose(const char *foo, 
