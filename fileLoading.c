@@ -14,6 +14,7 @@
  */
 
 SDC_BOOL verbose_output = SDC_FALSE;
+SDC_BOOL inplace_conv   = SDC_FALSE;
 
 static void verbosePrintf(const char *fmt, ...)
 {
@@ -390,7 +391,7 @@ static SDC_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 }
 
 
-SDC_STAT convertSafetensorFile(const char *filepath, const char *outpath)
+SDC_STAT convertSafetensorFile(const char *file_path, const char *out_path)
 {
 	FILE *fhandle             = NULL;
 	FILE *out_file		  = NULL;
@@ -404,12 +405,13 @@ SDC_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 	size_t write_cursor       = 0;
 	SDC_STAT ret_code = SDC_SUCCESS;
 
-	if (((fhandle  = fopen(filepath, "rb")) == NULL)
-	|| ((out_file  = fopen(outpath,  "w"))  == NULL)
+	if (((fhandle  = fopen(file_path, "rb")) == NULL)
+	|| ((inplace_conv == SDC_FALSE) 
+		&& ((out_file  = fopen(out_path,  "w"))  == NULL))
 	|| ((data_file = tmpfile()) == NULL))
 	{
 		fprintf(stderr, "%s: Failure to open file '%s'\n", 
-			__func__, filepath);
+			__func__, file_path);
 		ret_code = SDC_FAILURE;
 
 		goto CLEANUP;
@@ -418,7 +420,7 @@ SDC_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 	if (fread(&header_len, sizeof(uint64_t), 1, fhandle) != 1)
 	{
 		fprintf(stderr, "%s: Failure to read from file '%s'\n", 
-			__func__, filepath);
+			__func__, file_path);
 		ret_code = SDC_FAILURE;
 
 		goto CLEANUP;
@@ -475,6 +477,7 @@ SDC_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 	}
 	else
 	{
+		FILE *tmp_handle = NULL;
 		char *tmp = cJSON_PrintUnformatted(json_tree);
 		uint64_t tmp_len = (uint64_t) strlen(tmp);
 		uint64_t write_len;
@@ -484,11 +487,36 @@ SDC_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 		verbosePrintf("%lu of %lu tensors loaded successfully\n",
 			tensors_loaded, tensors_total);
 
+		if (inplace_conv == SDC_FALSE)
+		{
+			tmp_handle = out_file;
+		}
+		else
+		{
+			if (fclose(fhandle) == EOF) 
+			{
+				/* To prevent another attempt which is UB */
+				fhandle = NULL;
+				fprintf(stderr, "Bad close on input file\n");
+
+				goto CLEANUP;
+			}
+
+			fhandle = NULL;
+
+			if ((tmp_handle = fopen(file_path, "w")) == NULL)
+			{
+				fprintf(stderr, "Failed to open input file "
+					"'%s' for overwriting\n", file_path);
+
+				goto CLEANUP;
+			}
+		}
+
 		/* Write out the length of the header, taking into account
 		 * the potentially new values in the various data_range arrays
 		 * and how that affects the byte-length */
-
-		if (fwrite(&write_len, sizeof(uint64_t), 1, out_file) != 1)
+		if (fwrite(&write_len, sizeof(uint64_t), 1, tmp_handle) != 1)
 		{
 			fprintf(stderr, 
 				"%s: Failure to write out header length\n",
@@ -496,7 +524,7 @@ SDC_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 			ret_code = SDC_FAILURE;
 		}
 
-		if (fwrite(tmp, sizeof(char), tmp_len, out_file) != tmp_len)
+		if (fwrite(tmp, sizeof(char), tmp_len, tmp_handle) != tmp_len)
 		{
 			fprintf(stderr, 
 				"%s: Failure to write out entire header\n",
@@ -508,11 +536,17 @@ SDC_STAT convertSafetensorFile(const char *filepath, const char *outpath)
 
 		for (i = 0; i < write_cursor; i++)
 		{
-			fputc(getc(data_file), out_file);
+			fputc(getc(data_file), tmp_handle);
 		}
 
 		verbosePrintf("%lu bytes written to output file\n",
 			write_cursor + tmp_len + sizeof(uint64_t));
+
+		if (inplace_conv == SDC_TRUE)
+		{
+			fclose(tmp_handle);
+		}
+
 		free(tmp);
 	}
 

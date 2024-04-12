@@ -5,7 +5,13 @@
 #include "fileLoading.h"
 #include "portopt.h"
 
+/* When using the replace option, -R, there is a possibility that if the 
+ * program were to be terminated or crash during the overwriting of the input 
+ * file data could be lost.  One could write out to a .swp file and then rename
+ * it to the original but this would depend upon platform specific code */
+
 extern SDC_BOOL verbose_output;
+extern SDC_BOOL inplace_conv;
 
 void printHelp(void);
 
@@ -13,6 +19,7 @@ int main(int argc, char **argv)
 {
 	const struct portoptVerboseOpt opts[] =
 	{
+		{'R', "replace", PORTOPT_FALSE},
 		{'i', "input",   PORTOPT_TRUE},
 		{'o', "output",  PORTOPT_TRUE},
 		{'v', "verbose", PORTOPT_FALSE},
@@ -29,6 +36,11 @@ int main(int argc, char **argv)
 	{
 		switch (flag)
 		{
+			/* 'replace' instead of 'inplace' to avoid users 
+			 * inputting -I when they mean -i and losing data */
+			case 'R':
+				inplace_conv = SDC_TRUE;
+				break;
 			case 'i':
 				file_path = portoptGetArg(lenc, argv, &ind);
 				break;
@@ -58,11 +70,14 @@ int main(int argc, char **argv)
 		return SDC_FAILURE;
 	}
 
+	/* TODO: This will not guard against using two different paths to 
+	 * reference the same file, that would be a good thing to guard 
+	 * against */
 	if (strcmp(file_path, out_path) == 0)
 	{
-		fputs("In-place conversion is not currently supported, "
-			"--input and --output arguments must be different\n",
-			stderr);
+		fputs("input and output path are identical. If in-place "
+		"conversion is desired please run with the -R, --replace, "
+		"command line switch\n", stderr);
 
 		return SDC_FAILURE;
 	}
@@ -82,7 +97,8 @@ int main(int argc, char **argv)
 void printHelp(void)
 {
 	fputs("SDC, Safetensor Dtype Converter\n\n"
-		"-i, --input <FILE PATH>  : Safetensor file to be converted\n"
+		"-R, --replace            : Replaces input file with output\n"
+		"-i, --input  <FILE PATH> : Safetensor file to be converted\n"
 		"-o, --output <FILE PATH> : Desired output file name\n"
 		"-v, --verbose            : Enables additional logging\n"
 		"-h, --help               : Prints this help message\n\n"

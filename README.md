@@ -39,10 +39,11 @@ main.h.
 
 ## Command Line Options
 
-    -i, --input  <FILE PATH>    : The safetensors file to be converted
-    -o, --output <FILE PATH>    : The desired output file exactly as specified
-    -v, --verbose               : Prints more logging information, still terse
-    -h, --help                  : Prints a help message much like this one
+    -R, --replace            : Does the conversion in-place, -o is ignored
+    -i, --input  <FILE PATH> : The safetensors file to be converted
+    -o, --output <FILE PATH> : The desired output file exactly as specified
+    -v, --verbose            : Prints more logging information, still terse
+    -h, --help               : Prints a help message much like this one
 
 Notes: 
 
@@ -52,9 +53,10 @@ filed named output.safetensors
 * be sure to include .safetensors at the end of your desired output name
 if you want it to be automatically recognized by other programs as such
 
-* Currently in-place converting is not supported so the input and output files
-should be distinct, the program should create the output file if none by the
-given name already exist.
+* When using the replace option, -R, there is a possibility that if the 
+program were to be terminated or crash during the overwriting of the input file 
+data could be lost. One could write out to a .swp file and then rename it to 
+the original but this would depend upon platform specific code
 
 ## Example Invocation
 
@@ -71,6 +73,10 @@ it will work as expected.
 * Especially large files may run into issues with fseek and it's historical
 limitations, although in the authors experience it seems to manage on my 
 Linux machine alright. The program will warn you if this is a possibility.
+
+* If the same file is given for both --input and --output using different 
+relative paths bad things may happen, but it should just die with a fread
+failure.
 
 ## License
 
