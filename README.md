@@ -88,6 +88,11 @@ Linux machine alright. The program will warn you if this is a possibility.
 relative paths bad things may happen, but it should just die with a fread
 failure.
 
+* It would seem some models just cannot handle the loss of precision when
+converting down to F16 and BF16, for this reason it is strongly recommended
+not to use the -R, --replace command line switch if converting to these 
+dtypes.
+
 ## License
 
 License information can be found in detail in LICENSE.txt but in short this

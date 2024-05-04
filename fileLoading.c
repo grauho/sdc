@@ -230,11 +230,10 @@ static SDC_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 	data_len = data_range[1] - data_range[0];
 	data = rawDataArrayEndianness(data, data_len, dtype, SDC_FALSE);
 	
-	/*
-	if (dtype == FLOAT_64 || dtype == SIGNED_64)
-	*/
-	if ((dtype < UNSIGNED_8) /* ie: all floats, all signed ints */
-	&& (dtype != float_out))
+	if ((dtype != float_out) /* Nothing to be done */
+	&& (dtype != FLOAT_16)   /* Currently no handling for F16 <--> BF16 */
+	&& (dtype != BFLOAT_16)
+	&& (dtype < UNSIGNED_8)) /* ie: F64 and F32 and all signed ints */
 	{
 		const size_t num_items = data_len / dtype_info[dtype].size;
 		void *tmp = downConvertDTypes(data, num_items, dtype, 
@@ -253,15 +252,6 @@ static SDC_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 		data_len = num_items * dtype_info[out_dtype].size;
 		cJSON_SetValuestring(dtype_obj, dtype_info[out_dtype].name);
 	}
-
-	/* Because the locations of the raw data will change because some 
-	 * tensors get converted each tensor will need to have their data 
-	 * range updated in the new file regardless of dtype */
-	/*
-	verbosePrintf("(%lu <-> %lu) -> (%lu <-> %lu)\n",
-		data_range[0], data_range[1], 
-		*write_cursor, *write_cursor + data_len);
-	*/
 
 	if ((arr_obj = cJSON_GetArrayItem(data_obj, 0)) == NULL)
 	{

@@ -131,13 +131,9 @@ static uint16_t fltToHlf(const float in)
 
 static uint16_t dblToBft(const double in)
 {
-	const float flt 
-		= ((float) SDC_CLAMP(-FLT_MAX, in, FLT_MAX)) * 1.001957f;
-	uint32_t tmp = 0;
+	const float flt = ((float) in) * 1.001957f;
 
-	memcpy(&tmp, &flt, sizeof(float));
-
-	return (uint16_t) (tmp >> 16);
+	return (uint16_t) (asU32(flt) >> 16);
 }
 
 static void doubleToHalf(const double *in, uint16_t *out, const size_t len)
@@ -218,12 +214,14 @@ char* downConvertDTypes(char *in, const size_t len,
 			*out_type = FLOAT_16;
 			out_arr = malloc(sizeof(uint16_t) * len);
 			memcpy(out_arr, in, len * sizeof(uint16_t));
+			conversion_info.type[OUTGOING][*out_type]++;
 			free(tmp_arr);
 			return out_arr;
 		case BFLOAT_16:
 			*out_type = BFLOAT_16;
 			out_arr = malloc(sizeof(uint16_t) * len);
 			memcpy(out_arr, in, len * sizeof(uint16_t));
+			conversion_info.type[OUTGOING][*out_type]++;
 			free(tmp_arr);
 			return out_arr;
 		case SIGNED_64:
