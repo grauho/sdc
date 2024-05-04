@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <float.h>
 
 #include "main.h"
 #include "fileLoading.h"
@@ -10,20 +11,42 @@
  * file data could be lost.  One could write out to a .swp file and then rename
  * it to the original but this would depend upon platform specific code */
 
-extern SDC_BOOL verbose_output;
-extern SDC_BOOL inplace_conv;
+extern SDC_BOOL      verbose_output;
+extern SDC_BOOL      inplace_conv;
+extern enum dataType float_out;
 
 void printHelp(void);
+
+static enum dataType getFloatType(const char *str)
+{
+	if (strcmp(str, "F32") == 0)
+	{
+		return FLOAT_32;
+	}
+	else if (strcmp(str, "F16") == 0)
+	{
+		return FLOAT_16;
+	}
+	else if (strcmp(str, "BF16") == 0)
+	{
+		return BFLOAT_16;
+	}
+	else
+	{
+		return DTYPE_UNKNOWN;
+	}
+}
 
 int main(int argc, char **argv)
 {
 	const struct portoptVerboseOpt opts[] =
 	{
-		{'R', "replace", PORTOPT_FALSE},
-		{'i', "input",   PORTOPT_TRUE},
-		{'o', "output",  PORTOPT_TRUE},
-		{'v', "verbose", PORTOPT_FALSE},
-		{'h', "help",    PORTOPT_FALSE}
+		{'R', "replace",    PORTOPT_FALSE},
+		{'f', "float-type", PORTOPT_TRUE},
+		{'i', "input",      PORTOPT_TRUE},
+		{'o', "output",     PORTOPT_TRUE},
+		{'v', "verbose",    PORTOPT_FALSE},
+		{'h', "help",       PORTOPT_FALSE}
 	};
 	const size_t num_opts = sizeof(opts) / sizeof(opts[0]);
 	const size_t lenc = (size_t) argc;
@@ -40,6 +63,10 @@ int main(int argc, char **argv)
 			 * inputting -I when they mean -i and losing data */
 			case 'R':
 				inplace_conv = SDC_TRUE;
+				break;
+			case 'f':
+				float_out = getFloatType(portoptGetArg(lenc, 
+					argv, &ind));
 				break;
 			case 'i':
 				file_path = portoptGetArg(lenc, argv, &ind);
@@ -61,6 +88,22 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (float_out == DTYPE_UNKNOWN)
+	{
+		fputs("Invalid argument for --float-type, valid options are:\n"
+			"'F32'  : C language float type (default)\n"
+			"'F16'  : IEEE Specfication Half precision float\n"
+			"'BF16' : 'Brain' Half precision float\n", stdout);
+
+		return SDC_FAILURE;
+	}
+	else if (float_out != FLOAT_32)
+	{
+		verbosePrintf("WARNING: conversion to half precision or brain"
+			" floats relies on bit fiddling and as such may not "
+			"work as expected for non-IEEE compliant systems\n");
+	}
+
 	if (file_path == NULL)
 	{
 		fputs("Please provide a valid safetensors file path "
@@ -70,9 +113,9 @@ int main(int argc, char **argv)
 		return SDC_FAILURE;
 	}
 
-	/* TODO: This will not guard against using two different paths to 
+	/* XXX: This will not guard against using two different paths to 
 	 * reference the same file, that would be a good thing to guard 
-	 * against */
+	 * against but it should fail with fopen */
 	if (strcmp(file_path, out_path) == 0)
 	{
 		fputs("input and output path are identical. If in-place "
@@ -97,11 +140,18 @@ int main(int argc, char **argv)
 void printHelp(void)
 {
 	fputs("SDC, Safetensor Dtype Converter\n\n"
-		"-R, --replace            : Replaces input file with output\n"
-		"-i, --input  <FILE PATH> : Safetensor file to be converted\n"
-		"-o, --output <FILE PATH> : Desired output file name\n"
-		"-v, --verbose            : Enables additional logging\n"
-		"-h, --help               : Prints this help message\n\n"
+		"-R, --replace                    :"
+			" Replaces input file with output\n"
+		"-f, --float-out {F32, F16, BF16} :"
+			" Float output type, default F32\n"
+		"-i, --input  <FILE PATH>         :"
+			" Safetensor file to be converted\n"
+		"-o, --output <FILE PATH>         :"
+			" Desired output file name\n"
+		"-v, --verbose                    :"
+			" Enables additional logging\n"
+		"-h, --help                       :"
+			" Prints this help message\n\n"
 		"Example invocation:\n"
 		"./sdc -i ~/.models/foo.safetensors -o bar.safetensors\n",
 		stdout);

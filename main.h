@@ -2,6 +2,8 @@
 #define MAIN_H
 
 #include <stdint.h>
+#include <limits.h>
+#include <float.h>
 #include <string.h>
 
 #include "cJSON.h"
@@ -53,7 +55,24 @@ enum dataType
 	UNSIGNED_8,
 	BOOLEAN,
 	DTYPE_UNKNOWN,
-	NUM_DATA_TYPE = DTYPE_UNKNOWN
+	NUM_DATA_TYPE = DTYPE_UNKNOWN,
+	DTYPE_INT_OFF = SIGNED_64
 };
+
+static const char * const dtype_strs[] =
+{
+	"float_64",
+	"float_32",
+	"float_16",
+	"bfloat_16",
+	"signed_64",
+	"signed_32",
+	"signed_16",
+	"signed_8",
+	"unsigned_8",
+	"boolean"
+};
+
+static const size_t data_str_len = sizeof(dtype_strs) / sizeof(dtype_strs[0]);
 
 #endif /* MAIN_H */

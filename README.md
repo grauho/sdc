@@ -2,7 +2,9 @@
 
 This is a simple utility for converting a .safetensors file that contains
 types not handled by GGML, eg: 64-bit floats or 64-bit integers, into a file
-where those same values are converted and re-encoded to 32-bit floats.
+where those same values are converted and re-encoded to a smaller float type.
+By default a 32-bit "full precision" floating point type is used but IEEE 
+16-bit "half precision" floats or 16-bit "Brain" floats may be used instead.
 
 This is a quick and dirty solution to the problem and shouldn't be relied upon
 for critical applications.
@@ -11,7 +13,8 @@ for critical applications.
 
 An at least C99 compliant compiler is required to build this software, or for 
 the adventurous the program can be compiled in C90/C89 compliant mode if 
-alternative definitions for the stdint types are provided
+alternative definitions for the stdint types are provided along with other
+minor adjustments.
 
 Currently only a POSIX makefile is included for automated building:
 
@@ -26,7 +29,8 @@ manually like in the bad old days:
 cc -Wall -pedantic -O2 -Wno-unused-function -c -o main.o main.c
 cc -Wall -pedantic -O2 -Wno-unused-function -c -o cJSON.o cJSON.c
 cc -Wall -pedantic -O2 -Wno-unused-function -c -o fileLoading.o fileLoading.c
-cc -Wall -pedantic -O2 -Wno-unused-function -o sdc main.o cJSON.o fileLoading.o
+cc -Wall -pedantic -O2 -Wno-unused-function -c -o converting.o converting.c
+cc -Wall -pedantic -O2 -Wno-unused-function -o sdc main.o cJSON.o fileLoading.o converting.o
 ```
 
 Notes:
@@ -39,11 +43,12 @@ main.h.
 
 ## Command Line Options
 
-    -R, --replace            : Does the conversion in-place, -o is ignored
-    -i, --input  <FILE PATH> : The safetensors file to be converted
-    -o, --output <FILE PATH> : The desired output file exactly as specified
-    -v, --verbose            : Prints more logging information, still terse
-    -h, --help               : Prints a help message much like this one
+    -R, --replace                    : Converts file in-place, -o is ignored
+    -f, --float-out {F32, F16, BF16} : Desired float dtype output type
+    -i, --input  <FILE PATH>         : The safetensors file to be converted
+    -o, --output <FILE PATH>         : The desired output file 
+    -v, --verbose                    : Prints more logging information
+    -h, --help                       : Prints a help message much like this one
 
 Notes: 
 
@@ -58,10 +63,15 @@ program were to be terminated or crash during the overwriting of the input file
 data could be lost. One could write out to a .swp file and then rename it to 
 the original but this would depend upon platform specific code
 
+* Non-C language float data types, F16 and BF16, rely on some bit fiddling to 
+convert down into, as such if running on a system that does not use the IEEE 
+standardized number of bits for the fraction, mantissa, and exponent the 
+resulting values may be meaningless. 
+
 ## Example Invocation
 
 ``` shell
-./sdc -i ../../foo.safetensors -o bar.safetensors --verbose
+./sdc -i ../../foo.safetensors -o bar.safetensors --verbose -f F32
 ```
 
 ## Bugs

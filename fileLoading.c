@@ -6,6 +6,7 @@
 #include <limits.h>
 #include <float.h>
 
+#include "converting.h"
 #include "fileLoading.h"
 #include "cJSON.h"
 
@@ -15,8 +16,9 @@
 
 SDC_BOOL verbose_output = SDC_FALSE;
 SDC_BOOL inplace_conv   = SDC_FALSE;
+extern enum dataType float_out;
 
-static void verbosePrintf(const char *fmt, ...)
+void verbosePrintf(const char *fmt, ...)
 {
 	if (verbose_output == SDC_TRUE)
 	{
@@ -26,6 +28,7 @@ static void verbosePrintf(const char *fmt, ...)
 		va_end(args);
 	}
 }
+
 
 static char* slurpHeader(FILE *fhandle, const size_t header_len)
 {
@@ -64,31 +67,13 @@ static char* slurpHeader(FILE *fhandle, const size_t header_len)
 
 static enum dataType extractDataType(const struct cJSON *target)
 {
-	const struct
-	{
-		const char *name;
-		const enum dataType type;
-	} lookup[] =
-	{
-		{"F64",  FLOAT_64},
-		{"F32",  FLOAT_32},
-		{"F16",  FLOAT_16},
-		{"BF16", BFLOAT_16},
-		{"I64",  SIGNED_64},
-		{"I32",  SIGNED_32},
-		{"I16",  SIGNED_16},
-		{"I8",   SIGNED_8},
-		{"U8",   UNSIGNED_8},
-		{"BOOL", BOOLEAN}
-	};
-	const size_t table_len = sizeof(lookup) / sizeof(lookup[0]);
 	size_t i;
 
-	for (i = 0; i < table_len; i++)
+	for (i = 0; i < dtype_info_len; i++)
 	{
-		if (strcmp(lookup[i].name, target->valuestring) == 0)
+		if (strcmp(dtype_info[i].name, target->valuestring) == 0)
 		{
-			return lookup[i].type;
+			return dtype_info[i].dtype;
 		}
 	}
 
@@ -170,87 +155,33 @@ static char* extractRawData(FILE *fhandle, const struct cJSON *src,
 	return arr;
 }
 
-/* Unused, needed it to create test models from models I knew already worked */
-static char* convertF32toF64(char *data, const size_t len)
+static char* rawDataArrayEndianness(char *data, const size_t len, 
+	const enum dataType dtype, SDC_BOOL is_outgoing)
 {
-	const float *tmp = (float *) data;
-	double *ret;
 	size_t i;
 
-	if ((data == NULL)
-	|| ((ret = malloc(sizeof(double) * len)) == NULL))
+	if (dtype > dtype_info_len)
 	{
-		return NULL;
+		fprintf(stderr, "Unknown dtype %d\n", dtype);
+
+		return data;
 	}
 
 	for (i = 0; i < len; i++)
 	{
-		ret[i] = (double) tmp[i];
-	}
-
-	free(data);
-
-	return (char *) ret;
-}
-
-static char* convertF64toF32(char *data, const size_t len)
-{
-	const double *tmp = (double *) data;
-	float *ret;
-	size_t i;
-
-	if ((data == NULL)
-	|| ((ret = malloc(sizeof(float) * len)) == NULL))
-	{
-		return NULL;
-	}
-
-	for (i = 0; i < len; i++)
-	{
-		/* to avoid introducing "inf" but this isn't really the right
-		 * way to check these particular bounds */
-		if ((tmp[i] < FLT_MAX) && (tmp[i] > -FLT_MAX))
+		if (is_outgoing == SDC_TRUE)
 		{
-			ret[i] = (float) tmp[i];
+			PORTEGG_SYS_TO_LE_RAW(dtype_info[dtype].size, 
+				data + (i * dtype_info[dtype].size));	
 		}
 		else
 		{
-			if (tmp[i] < 0)
-			{
-				ret[i] = -FLT_MAX;
-			}
-			else
-			{
-				ret[i] = FLT_MAX;
-			}
+			PORTEGG_LE_TO_SYS_RAW(dtype_info[dtype].size, 
+				data + (i * dtype_info[dtype].size));	
 		}
 	}
 
-	free(data);
-
-	return (char *) ret;
-}
-
-static char* convertI64toF32(char *data, const size_t len)
-{
-	const uint64_t *tmp = (uint64_t *) data;
-	float *ret;
-	size_t i;
-
-	if ((data == NULL)
-	|| ((ret = malloc(sizeof(float) * len)) == NULL))
-	{
-		return NULL;
-	}
-
-	for (i = 0; i < len; i++)
-	{
-		ret[i] = (float) tmp[i];
-	}
-
-	free(data);
-
-	return (char *) ret;
+	return data;
 }
 
 static SDC_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file, 
@@ -258,6 +189,7 @@ static SDC_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 	const struct cJSON *json_cursor)
 {
 	enum dataType dtype     = DTYPE_UNKNOWN;
+	enum dataType out_dtype = DTYPE_UNKNOWN;
 	struct cJSON *data_obj  = NULL;
 	struct cJSON *dtype_obj = NULL;
 	struct cJSON *arr_obj   = NULL;
@@ -296,47 +228,30 @@ static SDC_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 	}
 
 	data_len = data_range[1] - data_range[0];
-	data = PORTEGG_LE_TO_SYS_RAW(data_len, data);
+	data = rawDataArrayEndianness(data, data_len, dtype, SDC_FALSE);
 	
-	if (dtype == FLOAT_64)
+	/*
+	if (dtype == FLOAT_64 || dtype == SIGNED_64)
+	*/
+	if ((dtype < UNSIGNED_8) /* ie: all floats, all signed ints */
+	&& (dtype != float_out))
 	{
-		const size_t num_items = data_len / sizeof(double);
-		char *tmp = NULL;
+		const size_t num_items = data_len / dtype_info[dtype].size;
+		void *tmp = downConvertDTypes(data, num_items, dtype, 
+			&out_dtype);
 
-		assert(data_len % sizeof(double) == 0);
-
-		if ((tmp = convertF64toF32(data, num_items)) == NULL)
+		if (tmp == NULL)
 		{
-			fprintf(stderr, "%s: Bad F64 -> F32 Conversion\n", 
-				__func__);
+			fprintf(stderr, "Bad down conversion\n");
 			free(data);
 
 			return SDC_FAILURE;
 		}
 
-		data = tmp;
-		data_len = num_items * sizeof(float);
-		cJSON_SetValuestring(dtype_obj, "F32");
-	}
-	else if (dtype == SIGNED_64)
-	{
-		const size_t num_items = data_len / sizeof(uint64_t);
-		char *tmp = NULL;
-
-		assert(data_len % sizeof(uint64_t) == 0);
-
-		if ((tmp = convertI64toF32(data, num_items)) == NULL)
-		{
-			fprintf(stderr, "%s: Bad I64 -> F32 Conversion\n",
-				__func__);
-			free(data);
-
-			return SDC_FAILURE;
-		}
-
-		data = tmp;
-		data_len = num_items * sizeof(float);
-		cJSON_SetValuestring(dtype_obj, "F32");
+		free(data);
+		data = (char *) tmp;
+		data_len = num_items * dtype_info[out_dtype].size;
+		cJSON_SetValuestring(dtype_obj, dtype_info[out_dtype].name);
 	}
 
 	/* Because the locations of the raw data will change because some 
@@ -371,8 +286,7 @@ static SDC_STAT loadTensorFromToken(FILE *fhandle, FILE *data_file,
 
 	porteggSysToLeCopy(size_t, *write_cursor + data_len, write_tmp);
 	cJSON_SetNumberValue(arr_obj, write_tmp);
-	
-	data = PORTEGG_SYS_TO_LE_RAW(data_len, data);
+	data = rawDataArrayEndianness(data, data_len, dtype, SDC_TRUE);
 
 	if ((bytes_out = fwrite(data, sizeof(char), data_len, data_file)) 
 		!= data_len)
@@ -549,6 +463,8 @@ SDC_STAT convertSafetensorFile(const char *file_path, const char *out_path)
 
 		free(tmp);
 	}
+
+	dumpTypeInfo();
 
 CLEANUP:
 	if (header != NULL)
